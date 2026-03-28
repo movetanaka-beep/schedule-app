@@ -2,10 +2,11 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Header from "@/components/Header";
 import Navigation from "@/components/Navigation";
 import MonthView from "@/components/calendar/MonthView";
+import DayDetail from "@/components/calendar/DayDetail";
 import { CalendarEvent, Holiday } from "@/types/calendar";
 
 export default function CalendarPage() {
@@ -15,6 +16,7 @@ export default function CalendarPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -49,6 +51,17 @@ export default function CalendarPage() {
   useEffect(() => {
     if (session) fetchEvents();
   }, [session, fetchEvents]);
+
+  // 選択日のイベントと休日
+  const selectedDayEvents = useMemo(() => {
+    if (!selectedDate) return [];
+    return events.filter((e) => e.startTime.slice(0, 10) === selectedDate);
+  }, [selectedDate, events]);
+
+  const selectedDayHoliday = useMemo(() => {
+    if (!selectedDate) return undefined;
+    return holidays.find((h) => h.date === selectedDate);
+  }, [selectedDate, holidays]);
 
   const goToPrevMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
@@ -110,12 +123,20 @@ export default function CalendarPage() {
             currentDate={currentDate}
             events={events}
             holidays={holidays}
-            onDateClick={(date) => {
-              console.log("Date clicked:", date);
-            }}
+            onDateClick={(date) => setSelectedDate(date)}
           />
         )}
       </div>
+
+      {/* 日付詳細（ボトムシート） */}
+      {selectedDate && (
+        <DayDetail
+          date={selectedDate}
+          events={selectedDayEvents}
+          holiday={selectedDayHoliday}
+          onClose={() => setSelectedDate(null)}
+        />
+      )}
 
       {/* イベント追加FAB */}
       <button
