@@ -71,12 +71,23 @@ export default function GroupWeekView({
   };
 
   // 日付のイベントをフィルタ（複数日にまたがるイベントも表示）
+  // 並び順: 終日が上、それ以外は時間順
   const getEventsForDate = (events: EventItem[], dateStr: string) => {
-    return events.filter((e) => {
-      const eventStart = e.startTime.slice(0, 10);
-      const eventEnd = e.endTime.slice(0, 10);
-      return dateStr >= eventStart && dateStr <= eventEnd;
-    });
+    return events
+      .filter((e) => {
+        const eventStart = e.startTime.slice(0, 10);
+        const eventEnd = e.endTime.slice(0, 10);
+        return dateStr >= eventStart && dateStr <= eventEnd;
+      })
+      .sort((a, b) => {
+        // 終日イベントを先に
+        if (a.allDay && !b.allDay) return -1;
+        if (!a.allDay && b.allDay) return 1;
+        // 両方終日なら名前順
+        if (a.allDay && b.allDay) return a.title.localeCompare(b.title);
+        // 両方時間指定なら開始時刻順
+        return a.startTime.localeCompare(b.startTime);
+      });
   };
 
   return (
