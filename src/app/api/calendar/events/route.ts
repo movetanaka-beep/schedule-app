@@ -61,7 +61,8 @@ export async function GET(req: NextRequest) {
     });
 
     // プライベートイベントは他人のものをマスク
-    const result = events.map((event) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = events.map((event: any) => {
       if (event.isPrivate && event.createdBy !== session.user.id) {
         return {
           id: event.id,
@@ -95,7 +96,8 @@ export async function GET(req: NextRequest) {
         shareScope: event.shareScope,
         createdBy: event.createdBy,
         creatorName: event.creator.name,
-        participants: event.participants.map((p) => ({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        participants: event.participants.map((p: any) => ({
           userId: p.userId,
           userName: p.user.name,
           status: p.status,
