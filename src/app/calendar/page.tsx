@@ -5,24 +5,97 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import Header from "@/components/Header";
 import Navigation from "@/components/Navigation";
+import GroupWeekView from "@/components/calendar/GroupWeekView";
 import MonthView from "@/components/calendar/MonthView";
 import DayDetail from "@/components/calendar/DayDetail";
 import { CalendarEvent, Holiday } from "@/types/calendar";
 
+type ViewMode = "groupWeek" | "groupDay" | "personalWeek" | "personalMonth";
+
+interface Member {
+  id: string;
+  name: string;
+  role: string;
+}
+
+interface Team {
+  id: string;
+  name: string;
+}
+
 export default function CalendarPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const [viewMode, setViewMode] = useState<ViewMode>("groupWeek");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
+  // グループ週間ビュー用
+  const [members, setMembers] = useState<Member[]>([]);
+  const [memberEvents, setMemberEvents] = useState<Record<string, CalendarEvent[]>>({});
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [selectedTeamId, setSelectedTeamId] = useState<string>("");
+
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
   }, [status, router]);
 
-  const fetchEvents = useCallback(async () => {
+  // チーム一覧取得
+  useEffect(() => {
+    if (!session) return;
+    fetch("/api/teams")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setTeams(data);
+      })
+      .catch(() => {});
+  }, [session]);
+
+  // 週の開始日を計算（土曜始まり → 参考画像に合わせて）
+  const weekStartDate = useMemo(() => {
+    const d = new Date(currentDate);
+    const day = d.getDay();
+    d.setDate(d.getDate() - day); // 日曜始まり
+    return d;
+  }, [currentDate]);
+
+  // グループ週間ビューのデータ取得
+  const fetchGroupWeek = useCallback(async () => {
+    const start = new Date(weekStartDate);
+    const end = new Date(weekStartDate);
+    end.setDate(end.getDate() + 6);
+    const startStr = start.toISOString().slice(0, 10);
+    const endStr = end.toISOString().slice(0, 10);
+
+    try {
+      const params = new URLSearchParams({ start: startStr, end: endStr });
+      if (selectedTeamId) params.set("teamId", selectedTeamId);
+
+      const [groupRes, holidaysRes] = await Promise.all([
+        fetch(`/api/calendar/events/group?${params}`),
+        fetch(`/api/calendar/holidays?start=${startStr}&end=${endStr}`),
+      ]);
+
+      if (groupRes.ok) {
+        const data = await groupRes.json();
+        setMembers(data.members || []);
+        setMemberEvents(data.memberEvents || {});
+      }
+      if (holidaysRes.ok) {
+        const data = await holidaysRes.json();
+        setHolidays(data);
+      }
+    } catch {
+      // エラーは静かに処理
+    }
+    setLoading(false);
+  }, [weekStartDate, selectedTeamId]);
+
+  // 個人月間ビューのデータ取得
+  const fetchPersonalMonth = useCallback(async () => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const start = new Date(year, month - 1, 21).toISOString().slice(0, 10);
@@ -34,25 +107,50 @@ export default function CalendarPage() {
         fetch(`/api/calendar/holidays?start=${start}&end=${end}`),
       ]);
 
-      if (eventsRes.ok) {
-        const data = await eventsRes.json();
-        setEvents(data);
-      }
-      if (holidaysRes.ok) {
-        const data = await holidaysRes.json();
-        setHolidays(data);
-      }
-    } catch {
-      // エラーは静かに処理
-    }
+      if (eventsRes.ok) setEvents(await eventsRes.json());
+      if (holidaysRes.ok) setHolidays(await holidaysRes.json());
+    } catch {}
     setLoading(false);
   }, [currentDate]);
 
   useEffect(() => {
-    if (session) fetchEvents();
-  }, [session, fetchEvents]);
+    if (!session) return;
+    setLoading(true);
+    if (viewMode === "groupWeek" || viewMode === "groupDay") {
+      fetchGroupWeek();
+    } else {
+      fetchPersonalMonth();
+    }
+  }, [session, viewMode, fetchGroupWeek, fetchPersonalMonth]);
 
-  // 選択日のイベントと休日
+  // ナビゲーション
+  const goToPrev = () => {
+    const d = new Date(currentDate);
+    if (viewMode === "groupWeek" || viewMode === "personalWeek") {
+      d.setDate(d.getDate() - 7);
+    } else if (viewMode === "personalMonth") {
+      d.setMonth(d.getMonth() - 1);
+    } else {
+      d.setDate(d.getDate() - 1);
+    }
+    setCurrentDate(d);
+  };
+
+  const goToNext = () => {
+    const d = new Date(currentDate);
+    if (viewMode === "groupWeek" || viewMode === "personalWeek") {
+      d.setDate(d.getDate() + 7);
+    } else if (viewMode === "personalMonth") {
+      d.setMonth(d.getMonth() + 1);
+    } else {
+      d.setDate(d.getDate() + 1);
+    }
+    setCurrentDate(d);
+  };
+
+  const goToToday = () => setCurrentDate(new Date());
+
+  // 選択日のデータ
   const selectedDayEvents = useMemo(() => {
     if (!selectedDate) return [];
     return events.filter((e) => e.startTime.slice(0, 10) === selectedDate);
@@ -63,72 +161,115 @@ export default function CalendarPage() {
     return holidays.find((h) => h.date === selectedDate);
   }, [selectedDate, holidays]);
 
-  const goToPrevMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-  };
-
-  const goToNextMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
-  };
-
-  const goToToday = () => {
-    setCurrentDate(new Date());
-  };
+  // 日付ラベル
+  const dateLabel = useMemo(() => {
+    const y = currentDate.getFullYear();
+    const m = currentDate.getMonth() + 1;
+    const d = currentDate.getDate();
+    const weekday = ["日", "月", "火", "水", "木", "金", "土"][currentDate.getDay()];
+    if (viewMode === "personalMonth") return `${y}年${m}月`;
+    return `${y}年${m}月${d}日（${weekday}）`;
+  }, [currentDate, viewMode]);
 
   if (status === "loading") {
     return <div className="min-h-screen flex items-center justify-center">読み込み中...</div>;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-white pb-16">
       <Header />
 
-      {/* カレンダーヘッダー */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3">
-        <div className="max-w-lg mx-auto flex items-center justify-between">
-          <button
-            onClick={goToPrevMonth}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600"
-          >
-            ◀
-          </button>
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-bold text-gray-800">
-              {currentDate.getFullYear()}年{currentDate.getMonth() + 1}月
-            </h2>
+      {/* ビュー切替タブ */}
+      <div className="border-b border-gray-300 bg-gray-50">
+        <div className="flex overflow-x-auto">
+          {[
+            { key: "groupWeek", label: "グループ週", icon: "📊" },
+            { key: "groupDay", label: "グループ日", icon: "📋" },
+            { key: "personalWeek", label: "個人週", icon: "📅" },
+            { key: "personalMonth", label: "個人月", icon: "🗓" },
+          ].map((tab) => (
             <button
-              onClick={goToToday}
-              className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-md font-medium hover:bg-indigo-200 transition-colors"
+              key={tab.key}
+              onClick={() => setViewMode(tab.key as ViewMode)}
+              className={`flex-shrink-0 px-4 py-2 text-xs font-medium border-b-2 transition-colors ${
+                viewMode === tab.key
+                  ? "border-indigo-600 text-indigo-600 bg-white"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
             >
-              今日
+              {tab.icon} {tab.label}
             </button>
-          </div>
-          <button
-            onClick={goToNextMonth}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600"
-          >
-            ▶
-          </button>
+          ))}
         </div>
       </div>
 
-      {/* カレンダー本体 */}
-      <div className="max-w-lg mx-auto px-2 pt-2">
+      {/* 日付ナビ + グループ選択 */}
+      <div className="border-b border-gray-200 bg-white px-3 py-2">
+        <div className="flex items-center justify-between gap-2">
+          {/* グループ選択 */}
+          {(viewMode === "groupWeek" || viewMode === "groupDay") && (
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-gray-500">グループ</span>
+              <select
+                value={selectedTeamId}
+                onChange={(e) => setSelectedTeamId(e.target.value)}
+                className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+              >
+                <option value="">全員</option>
+                {teams.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* 日付表示 */}
+          <div className="flex items-center gap-1 flex-1 justify-center">
+            <button onClick={goToPrev} className="px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 rounded">
+              ◀ {viewMode.includes("Week") ? "前週" : viewMode === "personalMonth" ? "前月" : "前日"}
+            </button>
+            <button onClick={goToToday} className="px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded font-medium">
+              今日
+            </button>
+            <button onClick={goToNext} className="px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 rounded">
+              {viewMode.includes("Week") ? "翌週" : viewMode === "personalMonth" ? "翌月" : "翌日"} ▶
+            </button>
+          </div>
+
+          {/* 日付ラベル */}
+          <div className="text-sm font-bold text-gray-800">{dateLabel}</div>
+        </div>
+      </div>
+
+      {/* メインコンテンツ */}
+      <div className="overflow-x-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-20 text-gray-400">
-            読み込み中...
+          <div className="flex items-center justify-center py-20 text-gray-400">読み込み中...</div>
+        ) : viewMode === "groupWeek" ? (
+          <GroupWeekView
+            startDate={weekStartDate}
+            members={members}
+            memberEvents={memberEvents}
+            holidays={holidays}
+            onAddEvent={(date) => router.push(`/calendar/event/new?date=${date}`)}
+          />
+        ) : viewMode === "personalMonth" ? (
+          <div className="max-w-lg mx-auto px-2 pt-2">
+            <MonthView
+              currentDate={currentDate}
+              events={events}
+              holidays={holidays}
+              onDateClick={(date) => setSelectedDate(date)}
+            />
           </div>
         ) : (
-          <MonthView
-            currentDate={currentDate}
-            events={events}
-            holidays={holidays}
-            onDateClick={(date) => setSelectedDate(date)}
-          />
+          <div className="flex items-center justify-center py-20 text-gray-400 text-sm">
+            {viewMode === "groupDay" ? "グループ日ビュー" : "個人週ビュー"}は準備中です
+          </div>
         )}
       </div>
 
-      {/* 日付詳細（ボトムシート） */}
+      {/* 日付詳細モーダル */}
       {selectedDate && (
         <DayDetail
           date={selectedDate}
@@ -137,14 +278,6 @@ export default function CalendarPage() {
           onClose={() => setSelectedDate(null)}
         />
       )}
-
-      {/* イベント追加FAB */}
-      <button
-        onClick={() => router.push("/calendar/event/new")}
-        className="fixed bottom-20 right-4 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg flex items-center justify-center text-2xl hover:bg-indigo-700 active:scale-95 transition-all z-40"
-      >
-        +
-      </button>
 
       <Navigation />
     </div>
