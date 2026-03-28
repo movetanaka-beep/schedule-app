@@ -6,7 +6,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import Header from "@/components/Header";
 import Navigation from "@/components/Navigation";
 import GroupWeekView from "@/components/calendar/GroupWeekView";
-import MonthView from "@/components/calendar/MonthView";
+import PersonalMonthView from "@/components/calendar/PersonalMonthView";
 import DayDetail from "@/components/calendar/DayDetail";
 import { CalendarEvent, Holiday } from "@/types/calendar";
 
@@ -240,14 +240,11 @@ export default function CalendarPage() {
             onAddEvent={(date) => router.push(`/calendar/event/new?date=${date}`)}
           />
         ) : viewMode === "personalMonth" ? (
-          <div className="max-w-lg mx-auto px-2 pt-2">
-            <MonthView
-              currentDate={currentDate}
-              events={events}
-              holidays={holidays}
-              onDateClick={(date) => setSelectedDate(date)}
-            />
-          </div>
+          <PersonalMonthView
+            currentDate={currentDate}
+            events={events}
+            holidays={holidays}
+          />
         ) : (
           <div className="flex items-center justify-center py-20 text-gray-400 text-sm">
             {viewMode === "groupDay" ? "グループ日ビュー" : "個人週ビュー"}は準備中です
