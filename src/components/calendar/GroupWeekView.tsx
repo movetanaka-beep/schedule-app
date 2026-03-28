@@ -70,9 +70,13 @@ export default function GroupWeekView({
     return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   };
 
-  // 日付のイベントをフィルタ
+  // 日付のイベントをフィルタ（複数日にまたがるイベントも表示）
   const getEventsForDate = (events: EventItem[], dateStr: string) => {
-    return events.filter((e) => e.startTime.slice(0, 10) === dateStr);
+    return events.filter((e) => {
+      const eventStart = e.startTime.slice(0, 10);
+      const eventEnd = e.endTime.slice(0, 10);
+      return dateStr >= eventStart && dateStr <= eventEnd;
+    });
   };
 
   return (

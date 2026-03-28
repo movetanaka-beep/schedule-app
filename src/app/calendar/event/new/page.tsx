@@ -23,10 +23,12 @@ function NewEventForm() {
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [date, setDate] = useState(defaultDate);
+  const [startDate, setStartDate] = useState(defaultDate);
+  const [endDate, setEndDate] = useState(defaultDate);
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("10:00");
   const [allDay, setAllDay] = useState(false);
+  const [multiDay, setMultiDay] = useState(false);
   const [category, setCategory] = useState<EventCategory>("DEFAULT");
   const [location, setLocation] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
@@ -46,12 +48,13 @@ function NewEventForm() {
     setLoading(true);
     setError("");
 
+    const actualEndDate = multiDay ? endDate : startDate;
     const startDateTime = allDay
-      ? `${date}T00:00:00`
-      : `${date}T${startTime}:00`;
+      ? `${startDate}T00:00:00`
+      : `${startDate}T${startTime}:00`;
     const endDateTime = allDay
-      ? `${date}T23:59:59`
-      : `${date}T${endTime}:00`;
+      ? `${actualEndDate}T23:59:59`
+      : `${actualEndDate}T${endTime}:00`;
 
     try {
       const res = await fetch("/api/calendar/events", {
@@ -135,32 +138,61 @@ function NewEventForm() {
             ))}
           </div>
 
-          {/* 終日 */}
-          <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-3 border border-gray-200">
-            <label className="text-sm text-gray-700 flex-1">終日</label>
-            <input
-              type="checkbox"
-              checked={allDay}
-              onChange={(e) => setAllDay(e.target.checked)}
-              className="w-5 h-5 rounded text-indigo-600"
-            />
+          {/* 終日・複数日 */}
+          <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+            <div className="px-4 py-3 flex items-center gap-3">
+              <label className="text-sm text-gray-700 flex-1">終日</label>
+              <input
+                type="checkbox"
+                checked={allDay}
+                onChange={(e) => setAllDay(e.target.checked)}
+                className="w-5 h-5 rounded text-indigo-600"
+              />
+            </div>
+            <div className="px-4 py-3 flex items-center gap-3">
+              <label className="text-sm text-gray-700 flex-1">複数日</label>
+              <input
+                type="checkbox"
+                checked={multiDay}
+                onChange={(e) => {
+                  setMultiDay(e.target.checked);
+                  if (!e.target.checked) setEndDate(startDate);
+                }}
+                className="w-5 h-5 rounded text-indigo-600"
+              />
+            </div>
           </div>
 
           {/* 日付・時間 */}
           <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
             <div className="px-4 py-3 flex items-center gap-3">
-              <span className="text-sm text-gray-500 w-12">日付</span>
+              <span className="text-sm text-gray-500 w-16">{multiDay ? "開始日" : "日付"}</span>
               <input
                 type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  if (!multiDay || endDate < e.target.value) setEndDate(e.target.value);
+                }}
                 className="flex-1 text-sm text-gray-800 bg-transparent"
               />
             </div>
+            {multiDay && (
+              <div className="px-4 py-3 flex items-center gap-3">
+                <span className="text-sm text-gray-500 w-16">終了日</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  min={startDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="flex-1 text-sm text-gray-800 bg-transparent"
+                />
+              </div>
+            )}
             {!allDay && (
               <>
                 <div className="px-4 py-3 flex items-center gap-3">
-                  <span className="text-sm text-gray-500 w-12">開始</span>
+                  <span className="text-sm text-gray-500 w-16">開始時刻</span>
                   <input
                     type="time"
                     value={startTime}
@@ -169,7 +201,7 @@ function NewEventForm() {
                   />
                 </div>
                 <div className="px-4 py-3 flex items-center gap-3">
-                  <span className="text-sm text-gray-500 w-12">終了</span>
+                  <span className="text-sm text-gray-500 w-16">終了時刻</span>
                   <input
                     type="time"
                     value={endTime}
