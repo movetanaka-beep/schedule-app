@@ -151,7 +151,7 @@ export default function GroupWeekView({
             return (
               <tr key={member.id} className="border-t-2 border-t-gray-400">
                 {/* メンバー名（固定列） */}
-                <td className="sticky left-0 z-10 bg-gray-50 border border-gray-300 border-t-2 border-t-gray-400 px-2 py-2 align-top">
+                <td className="sticky left-0 z-10 bg-gray-50 border border-gray-300 border-t-2 border-t-gray-400 px-2 py-2 align-top" style={{ minHeight: "110px" }}>
                   <div className="flex items-center gap-2">
                     <div className="w-7 h-7 bg-indigo-100 rounded-full flex items-center justify-center text-xs font-bold text-indigo-600 flex-shrink-0">
                       {member.name.charAt(0)}
@@ -180,10 +180,11 @@ export default function GroupWeekView({
                   return (
                     <td
                       key={day.date}
-                      className={`border border-gray-300 px-1 py-1 align-top min-h-[70px] relative group ${cellBg}`}
+                      className={`border border-gray-300 px-1 py-1 align-top relative group ${cellBg}`}
+                      style={{ minHeight: "110px" }}
                     >
-                      {/* イベント一覧 */}
-                      <div className="space-y-0.5">
+                      {/* イベント一覧（最低5段分の高さを確保） */}
+                      <div className="space-y-0.5" style={{ minHeight: "95px" }}>
                         {dayEvents.map((event) => {
                           const cat = event.category as EventCategory;
                           const bg = event.color ? `${event.color}20` : (CATEGORY_BG[cat] || CATEGORY_BG.DEFAULT);
