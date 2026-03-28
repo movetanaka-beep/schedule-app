@@ -1,0 +1,242 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// 既存テーブル（勤怠アプリと共有）
+// ============================================================
+
+model User {
+  id                 String              @id @default(cuid())
+  email              String              @unique
+  password           String
+  name               String
+  role               String              @default("EMPLOYEE")
+  hireDate           String?
+  annualLeaveBalance Float               @default(0)
+  stampImage         String?
+  qrToken            String?             @unique
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  attendances        Attendance[]
+  leaveRequests      LeaveRequest[]
+  approvals          LeaveRequest[]      @relation("Approver")
+  monthlyApprovals   MonthlyApproval[]   @relation("Employee")
+  managerApprovals   MonthlyApproval[]   @relation("Manager")
+  leaveGrants        LeaveGrant[]
+  // カレンダー用リレーション
+  teamMembers        TeamMember[]
+  createdEvents      ScheduleEvent[]     @relation("EventCreator")
+  eventParticipants  EventParticipant[]
+  eventReminders     EventReminder[]
+  createdHolidays    CompanyHoliday[]    @relation("HolidayCreator")
+}
+
+model MonthlyApproval {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation("Employee", fields: [userId], references: [id])
+  month           String
+  status          String    @default("OPEN")
+  employeeStampAt DateTime?
+  confirmedAt     DateTime?
+  revisionNote    String?
+  managerId       String?
+  manager         User?     @relation("Manager", fields: [managerId], references: [id])
+  managerStampAt  DateTime?
+  finalizedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([userId, month])
+}
+
+model Attendance {
+  id              String        @id @default(cuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  date            String
+  clockIn         DateTime?
+  clockOut        DateTime?
+  breakMinutes    Int           @default(60)
+  overtimeMinutes Int           @default(0)
+  latitude        Float?
+  longitude       Float?
+  latitudeOut     Float?
+  longitudeOut    Float?
+  status          String        @default("NORMAL")
+  note            String?
+  noteOut         String?
+  breakRecords    BreakRecord[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([userId, date])
+}
+
+model LeaveRequest {
+  id           String        @id @default(cuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id])
+  type         String
+  startDate    String
+  endDate      String
+  hours        Float?
+  reason       String
+  status       String        @default("PENDING")
+  approvedBy   String?
+  approver     User?         @relation("Approver", fields: [approvedBy], references: [id])
+  approvedAt   DateTime?
+  grantId      String?
+  grant        LeaveGrant?   @relation(fields: [grantId], references: [id])
+  breakRecords BreakRecord[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model BreakRecord {
+  id             String        @id @default(cuid())
+  attendanceId   String
+  attendance     Attendance    @relation(fields: [attendanceId], references: [id])
+  breakOut       DateTime
+  breakIn        DateTime?
+  minutes        Int           @default(0)
+  isLeave        Boolean       @default(false)
+  leaveRequestId String?
+  leaveRequest   LeaveRequest? @relation(fields: [leaveRequestId], references: [id])
+  note           String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model LeavePolicy {
+  id             String   @id @default(cuid())
+  yearsOfService Float
+  grantDays      Int
+  description    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([yearsOfService])
+}
+
+model LeaveGrant {
+  id            String         @id @default(cuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id])
+  grantDate     String
+  expiryDate    String
+  grantDays     Float
+  usedDays      Float          @default(0)
+  remainingDays Float
+  fiscalYear    String
+  status        String         @default("ACTIVE")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  leaveRequests LeaveRequest[]
+
+  @@unique([userId, grantDate])
+}
+
+// ============================================================
+// カレンダー新規テーブル
+// ============================================================
+
+// 会社休日
+model CompanyHoliday {
+  id        String   @id @default(cuid())
+  date      String   @unique // YYYY-MM-DD
+  name      String            // 例: 元日, 創立記念日
+  type      String   @default("COMPANY") // NATIONAL(法定休日1.35x), COMPANY(法定外休日1.25x), HALF_DAY
+  createdBy String
+  creator   User     @relation("HolidayCreator", fields: [createdBy], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// チーム・グループ
+model Team {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  description String?
+  color       String       @default("#3b82f6") // チームカラー（hex）
+  members     TeamMember[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+// チームメンバー
+model TeamMember {
+  id        String   @id @default(cuid())
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   @default("MEMBER") // MEMBER, LEADER
+  createdAt DateTime @default(now())
+
+  @@unique([teamId, userId])
+}
+
+// スケジュールイベント
+model ScheduleEvent {
+  id            String             @id @default(cuid())
+  title         String
+  description   String?
+  startTime     DateTime
+  endTime       DateTime
+  allDay        Boolean            @default(false)
+  isPrivate     Boolean            @default(false)
+  category      String             @default("DEFAULT") // DEFAULT, MEETING, TASK, REMINDER, OUT_OF_OFFICE
+  color         String?            // カスタム色（nullならカテゴリデフォルト）
+  location      String?
+  // 共有範囲
+  shareScope    String             @default("PRIVATE") // PRIVATE, TEAM, ALL
+  shareTeamId   String?            // TEAM共有時のチームID
+  // 繰り返し
+  recurrence    String?            // RRULE形式（例: FREQ=WEEKLY;BYDAY=MO）
+  recurrenceEnd DateTime?
+  parentEventId String?            // 繰り返しの個別例外
+  parentEvent   ScheduleEvent?     @relation("EventRecurrence", fields: [parentEventId], references: [id])
+  childEvents   ScheduleEvent[]    @relation("EventRecurrence")
+  // 作成者
+  createdBy     String
+  creator       User               @relation("EventCreator", fields: [createdBy], references: [id])
+  participants  EventParticipant[]
+  reminders     EventReminder[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@index([createdBy, startTime])
+  @@index([startTime, endTime])
+}
+
+// イベント参加者
+model EventParticipant {
+  id       String        @id @default(cuid())
+  eventId  String
+  event    ScheduleEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status   String        @default("PENDING") // PENDING, ACCEPTED, DECLINED
+
+  @@unique([eventId, userId])
+}
+
+// イベントリマインダー
+model EventReminder {
+  id            String        @id @default(cuid())
+  eventId       String
+  event         ScheduleEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  minutesBefore Int           // 何分前に通知
+  sent          Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+
+  @@unique([eventId, userId, minutesBefore])
+}
