@@ -2,7 +2,24 @@
 
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { CATEGORY_COLORS, EventCategory, Holiday } from "@/types/calendar";
+import { EventCategory, Holiday } from "@/types/calendar";
+
+// カテゴリごとの背景色（サイボウズ風の淡い色）
+const CATEGORY_BG: Record<string, string> = {
+  DEFAULT: "#e8f0fe",
+  MEETING: "#e0f2fe",
+  TASK: "#fef9c3",
+  REMINDER: "#d1fae5",
+  OUT_OF_OFFICE: "#fee2e2",
+};
+
+const CATEGORY_BORDER: Record<string, string> = {
+  DEFAULT: "#3b82f6",
+  MEETING: "#0ea5e9",
+  TASK: "#eab308",
+  REMINDER: "#10b981",
+  OUT_OF_OFFICE: "#ef4444",
+};
 
 interface EventItem {
   id: string;
@@ -65,9 +82,10 @@ export default function GroupWeekView({
     return map;
   }, [holidays]);
 
-  const formatTime = (isoStr: string) => {
-    const d = new Date(isoStr);
-    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  const formatTimeRange = (start: string, end: string) => {
+    const s = new Date(start);
+    const e = new Date(end);
+    return `${s.getHours()}:${String(s.getMinutes()).padStart(2, "0")}-${e.getHours()}:${String(e.getMinutes()).padStart(2, "0")}`;
   };
 
   // 日付のイベントをフィルタ（複数日にまたがるイベントも表示）
@@ -109,7 +127,7 @@ export default function GroupWeekView({
                 <th
                   key={day.date}
                   className={`border border-gray-300 px-1 py-2 text-center text-xs font-medium min-w-[120px] ${
-                    day.isToday ? "bg-blue-50" : "bg-gray-100"
+                    day.isToday ? "bg-yellow-50" : isSunday || isHoliday ? "bg-red-50" : isSaturday ? "bg-blue-50" : "bg-gray-100"
                   }`}
                 >
                   <div className={`${isHoliday ? "text-red-500" : isSaturday ? "text-blue-500" : "text-gray-700"}`}>
@@ -151,33 +169,42 @@ export default function GroupWeekView({
                 {weekDays.map((day) => {
                   const dayEvents = getEventsForDate(events, day.date);
 
+                  const isSunday = day.dayOfWeek === 0;
+                  const isSaturday = day.dayOfWeek === 6;
+                  const isHoliday = !!holidayMap[day.date];
+                  let cellBg = "";
+                  if (isSunday || isHoliday) cellBg = "bg-red-50/40";
+                  else if (isSaturday) cellBg = "bg-blue-50/40";
+                  if (day.isToday) cellBg = "bg-yellow-50";
+
                   return (
                     <td
                       key={day.date}
-                      className={`border border-gray-300 px-1 py-1 align-top min-h-[60px] relative group ${
-                        day.isToday ? "bg-blue-50/30" : ""
-                      }`}
+                      className={`border border-gray-300 px-1 py-1 align-top min-h-[70px] relative group ${cellBg}`}
                     >
                       {/* イベント一覧 */}
                       <div className="space-y-0.5">
                         {dayEvents.map((event) => {
-                          const color = event.color || CATEGORY_COLORS[event.category as EventCategory] || "#3b82f6";
+                          const cat = event.category as EventCategory;
+                          const bg = event.color ? `${event.color}20` : (CATEGORY_BG[cat] || CATEGORY_BG.DEFAULT);
+                          const border = event.color || CATEGORY_BORDER[cat] || CATEGORY_BORDER.DEFAULT;
+
                           return (
                             <button
                               key={event.id}
                               onClick={() => router.push(`/calendar/event/${event.id}`)}
-                              className="w-full text-left flex items-start gap-1 px-1 py-0.5 rounded hover:bg-gray-100 transition-colors"
+                              className="w-full text-left rounded px-1 py-0.5 hover:opacity-80 transition-opacity block"
+                              style={{ backgroundColor: bg, borderLeft: `3px solid ${border}`, fontSize: "10px", lineHeight: "15px" }}
                             >
-                              <span
-                                className="inline-block w-2 h-2 rounded-full flex-shrink-0 mt-1"
-                                style={{ backgroundColor: color }}
-                              />
-                              <span className="text-[11px] text-gray-700 leading-tight line-clamp-2">
-                                {!event.allDay && (
-                                  <span className="text-gray-400 mr-0.5">{formatTime(event.startTime)}</span>
-                                )}
-                                {event.title}
-                              </span>
+                              {event.allDay ? (
+                                <span className="font-medium text-gray-700 truncate block">{event.title}</span>
+                              ) : (
+                                <span className="truncate block">
+                                  <span className="text-gray-400">{formatTimeRange(event.startTime, event.endTime)}</span>
+                                  {" "}
+                                  <span className="text-gray-700">{event.title}</span>
+                                </span>
+                              )}
                             </button>
                           );
                         })}
