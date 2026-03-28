@@ -43,16 +43,7 @@ export default function CalendarPage() {
     if (status === "unauthenticated") router.push("/login");
   }, [status, router]);
 
-  // チーム一覧取得
-  useEffect(() => {
-    if (!session) return;
-    fetch("/api/teams")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setTeams(data);
-      })
-      .catch(() => {});
-  }, [session]);
+  // チーム一覧はグループ週間ビューのAPIレスポンスから取得
 
   // 週の開始日を計算（土曜始まり → 参考画像に合わせて）
   const weekStartDate = useMemo(() => {
@@ -74,19 +65,14 @@ export default function CalendarPage() {
       const params = new URLSearchParams({ start: startStr, end: endStr });
       if (selectedTeamId) params.set("teamId", selectedTeamId);
 
-      const [groupRes, holidaysRes] = await Promise.all([
-        fetch(`/api/calendar/events/group?${params}`),
-        fetch(`/api/calendar/holidays?start=${startStr}&end=${endStr}`),
-      ]);
+      const groupRes = await fetch(`/api/calendar/events/group?${params}`);
 
       if (groupRes.ok) {
         const data = await groupRes.json();
         setMembers(data.members || []);
         setMemberEvents(data.memberEvents || {});
-      }
-      if (holidaysRes.ok) {
-        const data = await holidaysRes.json();
-        setHolidays(data);
+        setHolidays(data.holidays || []);
+        if (data.teams && teams.length === 0) setTeams(data.teams);
       }
     } catch {
       // エラーは静かに処理

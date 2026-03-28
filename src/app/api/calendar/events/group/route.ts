@@ -132,7 +132,19 @@ export async function GET(req: NextRequest) {
       });
     });
 
-    return NextResponse.json({ members, memberEvents });
+    // 休日とチーム一覧も同時取得（API呼び出し回数を減らす）
+    const [holidays, teams] = await Promise.all([
+      prisma.companyHoliday.findMany({
+        where: { date: { gte: start!, lte: end! } },
+        orderBy: { date: "asc" },
+      }),
+      prisma.team.findMany({
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      }),
+    ]);
+
+    return NextResponse.json({ members, memberEvents, holidays, teams });
   } catch (error) {
     console.error("Group events GET error:", error);
     return NextResponse.json({ error: "サーバーエラー" }, { status: 500 });
