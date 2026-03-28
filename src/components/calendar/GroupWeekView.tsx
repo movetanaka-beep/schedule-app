@@ -149,9 +149,9 @@ export default function GroupWeekView({
             const events = memberEvents[member.id] || [];
 
             return (
-              <tr key={member.id}>
+              <tr key={member.id} className="border-t-2 border-t-gray-400">
                 {/* メンバー名（固定列） */}
-                <td className="sticky left-0 z-10 bg-white border border-gray-300 px-2 py-2 align-top">
+                <td className="sticky left-0 z-10 bg-gray-50 border border-gray-300 border-t-2 border-t-gray-400 px-2 py-2 align-top">
                   <div className="flex items-center gap-2">
                     <div className="w-7 h-7 bg-indigo-100 rounded-full flex items-center justify-center text-xs font-bold text-indigo-600 flex-shrink-0">
                       {member.name.charAt(0)}
