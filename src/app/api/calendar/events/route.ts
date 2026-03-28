@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
       where: { userId: session.user.id },
       select: { teamId: true },
     });
-    const teamIds = userTeams.map((t) => t.teamId);
+    const teamIds = userTeams.map((t: { teamId: string }) => t.teamId);
 
     // 表示可能なイベントを取得
     const events = await prisma.scheduleEvent.findMany({
