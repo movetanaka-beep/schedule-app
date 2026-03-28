@@ -140,15 +140,17 @@ function NewEventForm() {
 
           {/* 終日・複数日 */}
           <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-            <div className="px-4 py-3 flex items-center gap-3">
-              <label className="text-sm text-gray-700 flex-1">終日</label>
-              <input
-                type="checkbox"
-                checked={allDay}
-                onChange={(e) => setAllDay(e.target.checked)}
-                className="w-5 h-5 rounded text-indigo-600"
-              />
-            </div>
+            {!multiDay && (
+              <div className="px-4 py-3 flex items-center gap-3">
+                <label className="text-sm text-gray-700 flex-1">終日</label>
+                <input
+                  type="checkbox"
+                  checked={allDay}
+                  onChange={(e) => setAllDay(e.target.checked)}
+                  className="w-5 h-5 rounded text-indigo-600"
+                />
+              </div>
+            )}
             <div className="px-4 py-3 flex items-center gap-3">
               <label className="text-sm text-gray-700 flex-1">複数日</label>
               <input
@@ -156,6 +158,7 @@ function NewEventForm() {
                 checked={multiDay}
                 onChange={(e) => {
                   setMultiDay(e.target.checked);
+                  if (e.target.checked) setAllDay(true);
                   if (!e.target.checked) setEndDate(startDate);
                 }}
                 className="w-5 h-5 rounded text-indigo-600"
@@ -189,7 +192,7 @@ function NewEventForm() {
                 />
               </div>
             )}
-            {!allDay && (
+            {!allDay && !multiDay && (
               <>
                 <div className="px-4 py-3 flex items-center gap-3">
                   <span className="text-sm text-gray-500 w-16">開始時刻</span>
