@@ -33,12 +33,27 @@ interface UserItem {
   name: string;
 }
 
-type Tab = "categories" | "teams";
+interface Holiday {
+  id: string;
+  date: string;
+  name: string;
+  type: string;
+}
+
+type Tab = "holidays" | "categories" | "teams";
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>("categories");
+  const [tab, setTab] = useState<Tab>("holidays");
+
+  // 休日
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const [newHolidayDate, setNewHolidayDate] = useState("");
+  const [newHolidayName, setNewHolidayName] = useState("");
+  const [newHolidayType, setNewHolidayType] = useState("COMPANY");
+  const [seedYear, setSeedYear] = useState(String(new Date().getFullYear()));
+  const [seedLoading, setSeedLoading] = useState(false);
 
   // カテゴリ
   const [categories, setCategories] = useState<Category[]>([]);
@@ -60,10 +75,62 @@ export default function AdminPage() {
   // データ取得
   useEffect(() => {
     if (!session) return;
+    fetchHolidays();
     fetchCategories();
     fetchTeams();
     fetchUsers();
   }, [session]);
+
+  const fetchHolidays = () => {
+    const year = new Date().getFullYear();
+    fetch(`/api/calendar/holidays?start=${year}-01-01&end=${year + 1}-12-31`)
+      .then((r) => r.json())
+      .then((d) => { if (Array.isArray(d)) setHolidays(d); })
+      .catch(() => {});
+  };
+
+  // 休日追加
+  const handleAddHoliday = async () => {
+    if (!newHolidayDate || !newHolidayName.trim()) return;
+    const res = await fetch("/api/calendar/holidays", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ date: newHolidayDate, name: newHolidayName.trim(), type: newHolidayType }),
+    });
+    if (res.ok) {
+      setNewHolidayDate("");
+      setNewHolidayName("");
+      fetchHolidays();
+    } else {
+      const data = await res.json();
+      alert(data.error || "追加できませんでした");
+    }
+  };
+
+  // 休日削除
+  const handleDeleteHoliday = async (id: string) => {
+    if (!confirm("この休日を削除しますか？")) return;
+    const res = await fetch(`/api/calendar/holidays/${id}`, { method: "DELETE" });
+    if (res.ok) fetchHolidays();
+  };
+
+  // 祝日一括登録
+  const handleSeedHolidays = async () => {
+    setSeedLoading(true);
+    const res = await fetch("/api/calendar/holidays/seed", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ year: parseInt(seedYear) }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert(`${data.message}（新規: ${data.created}件、既存: ${data.skipped}件）`);
+      fetchHolidays();
+    } else {
+      alert(data.error || "登録に失敗しました");
+    }
+    setSeedLoading(false);
+  };
 
   const fetchCategories = () => {
     fetch("/api/calendar/categories").then((r) => r.json()).then(setCategories).catch(() => {});
@@ -165,8 +232,9 @@ export default function AdminPage() {
         <h2 className="text-lg font-bold text-gray-800 mb-4">設定</h2>
 
         {/* タブ */}
-        <div className="flex gap-1 mb-4">
+        <div className="flex gap-1 mb-4 overflow-x-auto">
           {[
+            { key: "holidays", label: "📅 休日管理" },
             { key: "categories", label: "🏷 カテゴリ管理" },
             { key: "teams", label: "👥 チーム管理" },
           ].map((t) => (
@@ -181,6 +249,110 @@ export default function AdminPage() {
             </button>
           ))}
         </div>
+
+        {/* 休日管理 */}
+        {tab === "holidays" && (
+          <div className="space-y-4">
+            {/* 祝日一括登録 */}
+            <div className="bg-white rounded-xl border border-gray-200 px-4 py-4">
+              <h3 className="text-sm font-medium text-gray-700 mb-3">🇯🇵 日本の祝日を一括登録</h3>
+              <div className="flex gap-2 items-end">
+                <select
+                  value={seedYear}
+                  onChange={(e) => setSeedYear(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                >
+                  {[2025, 2026, 2027, 2028, 2029, 2030].map((y) => (
+                    <option key={y} value={y}>{y}年</option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleSeedHolidays}
+                  disabled={seedLoading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {seedLoading ? "登録中..." : "祝日を登録"}
+                </button>
+              </div>
+            </div>
+
+            {/* 会社休業日を追加 */}
+            <div className="bg-white rounded-xl border border-gray-200 px-4 py-4">
+              <h3 className="text-sm font-medium text-gray-700 mb-3">会社休業日を追加</h3>
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    type="date"
+                    value={newHolidayDate}
+                    onChange={(e) => setNewHolidayDate(e.target.value)}
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  />
+                  <select
+                    value={newHolidayType}
+                    onChange={(e) => setNewHolidayType(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  >
+                    <option value="COMPANY">会社休業日</option>
+                    <option value="NATIONAL">法定休日</option>
+                    <option value="HALF_DAY">半休日</option>
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newHolidayName}
+                    onChange={(e) => setNewHolidayName(e.target.value)}
+                    placeholder="休日名（例: 年末年始、お盆休み）"
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  />
+                  <button
+                    onClick={handleAddHoliday}
+                    disabled={!newHolidayDate || !newHolidayName.trim()}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    追加
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* 登録済み休日一覧 */}
+            <div className="bg-white rounded-xl border border-gray-200">
+              <div className="px-4 py-3 border-b border-gray-100">
+                <h3 className="text-sm font-medium text-gray-700">登録済み休日</h3>
+              </div>
+              <div className="divide-y divide-gray-100 max-h-[400px] overflow-y-auto">
+                {holidays.length === 0 ? (
+                  <p className="px-4 py-6 text-sm text-gray-400 text-center">休日が登録されていません</p>
+                ) : (
+                  holidays.map((h) => (
+                    <div key={h.id} className="px-4 py-2.5 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className={`text-sm font-medium ${h.type === "NATIONAL" ? "text-red-600" : h.type === "COMPANY" ? "text-orange-600" : "text-gray-600"}`}>
+                          {h.date}
+                        </span>
+                        <span className="text-sm text-gray-800 font-medium">{h.name}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                          h.type === "NATIONAL" ? "bg-red-100 text-red-600" :
+                          h.type === "COMPANY" ? "bg-orange-100 text-orange-600" :
+                          "bg-gray-100 text-gray-600"
+                        }`}>
+                          {h.type === "NATIONAL" ? "祝日" : h.type === "COMPANY" ? "会社休業日" : "半休日"}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteHoliday(h.id)}
+                        className="text-xs text-red-400 hover:text-red-600"
+                      >
+                        削除
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* カテゴリ管理 */}
         {tab === "categories" && (
