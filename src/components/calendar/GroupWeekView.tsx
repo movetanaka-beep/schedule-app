@@ -127,15 +127,21 @@ export default function GroupWeekView({
                 <th
                   key={day.date}
                   className={`border border-gray-300 px-1 py-2 text-center text-xs font-medium min-w-[120px] ${
-                    day.isToday ? "bg-yellow-50" : isSunday || isHoliday ? "bg-red-50" : isSaturday ? "bg-blue-50" : "bg-gray-100"
+                    day.isToday
+                      ? "bg-yellow-100 border-yellow-400"
+                      : isSunday || isHoliday
+                      ? "bg-red-100"
+                      : isSaturday
+                      ? "bg-blue-100"
+                      : "bg-gray-100"
                   }`}
                 >
-                  <div className={`${isHoliday ? "text-red-500" : isSaturday ? "text-blue-500" : "text-gray-700"}`}>
-                    <span className="font-bold text-sm">{day.day}</span>
+                  <div className={`font-bold ${isHoliday || isSunday ? "text-red-600" : isSaturday ? "text-blue-600" : "text-gray-700"}`}>
+                    <span className="text-sm">{day.day}</span>
                     <span className="ml-1">（{WEEKDAYS[day.dayOfWeek]}）</span>
                   </div>
                   {holiday && (
-                    <div className="text-[10px] text-red-400 mt-0.5">{holiday.name}</div>
+                    <div className="text-[10px] text-red-500 font-medium mt-0.5">{holiday.name}</div>
                   )}
                 </th>
               );
@@ -173,8 +179,8 @@ export default function GroupWeekView({
                   const isSaturday = day.dayOfWeek === 6;
                   const isHoliday = !!holidayMap[day.date];
                   let cellBg = "";
-                  if (isSunday || isHoliday) cellBg = "bg-red-50/40";
-                  else if (isSaturday) cellBg = "bg-blue-50/40";
+                  if (isSunday || isHoliday) cellBg = "bg-red-50";
+                  else if (isSaturday) cellBg = "bg-blue-50";
                   if (day.isToday) cellBg = "bg-yellow-50";
 
                   return (
