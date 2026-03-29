@@ -114,7 +114,7 @@ export default function GroupWeekView({
         {/* ヘッダー: 日付行 */}
         <thead>
           <tr>
-            <th className="sticky left-0 z-10 bg-gray-100 border border-gray-300 px-2 py-2 text-left text-xs font-medium text-gray-600 w-[140px] min-w-[140px]">
+            <th className="sticky left-0 z-10 bg-gray-100 border border-gray-300 px-2 py-2 text-left text-sm font-medium text-gray-600 w-[150px] min-w-[150px]">
               メンバー
             </th>
             {weekDays.map((day) => {
@@ -126,7 +126,7 @@ export default function GroupWeekView({
               return (
                 <th
                   key={day.date}
-                  className={`border border-gray-300 px-1 py-2 text-center text-xs font-medium min-w-[120px] ${
+                  className={`border border-gray-300 px-1 py-2 text-center text-sm font-medium min-w-[130px] ${
                     day.isToday
                       ? "bg-yellow-200 border-yellow-500"
                       : isSunday || isHoliday
@@ -137,11 +137,11 @@ export default function GroupWeekView({
                   }`}
                 >
                   <div className={`font-bold ${isHoliday || isSunday ? "text-red-600" : isSaturday ? "text-blue-600" : "text-gray-700"}`}>
-                    <span className="text-sm">{day.day}</span>
-                    <span className="ml-1">（{WEEKDAYS[day.dayOfWeek]}）</span>
+                    <span className="text-base">{day.day}</span>
+                    <span className="ml-1 text-sm">（{WEEKDAYS[day.dayOfWeek]}）</span>
                   </div>
                   {holiday && (
-                    <div className="text-[10px] text-red-500 font-medium mt-0.5">{holiday.name}</div>
+                    <div className="text-xs text-red-500 font-medium mt-0.5">{holiday.name}</div>
                   )}
                 </th>
               );
@@ -159,13 +159,13 @@ export default function GroupWeekView({
                 {/* メンバー名（固定列） */}
                 <td className="sticky left-0 z-10 bg-gray-50 border border-gray-300 border-t-2 border-t-gray-400 px-2 py-2 align-top" style={{ minHeight: "110px" }}>
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 bg-indigo-100 rounded-full flex items-center justify-center text-xs font-bold text-indigo-600 flex-shrink-0">
+                    <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-sm font-bold text-indigo-600 flex-shrink-0">
                       {member.name.charAt(0)}
                     </div>
                     <div>
-                      <div className="text-xs font-medium text-gray-800 leading-tight">{member.name}</div>
+                      <div className="text-sm font-medium text-gray-800 leading-tight">{member.name}</div>
                       {member.role === "ADMIN" && (
-                        <div className="text-[10px] text-gray-400">管理者</div>
+                        <div className="text-xs text-gray-400">管理者</div>
                       )}
                     </div>
                   </div>
@@ -200,8 +200,8 @@ export default function GroupWeekView({
                             <button
                               key={event.id}
                               onClick={() => router.push(`/calendar/event/${event.id}`)}
-                              className="w-full text-left rounded px-1 py-0.5 hover:opacity-80 transition-opacity block"
-                              style={{ backgroundColor: bg, borderLeft: `3px solid ${border}`, fontSize: "10px", lineHeight: "15px" }}
+                              className="w-full text-left rounded px-1.5 py-0.5 hover:opacity-80 transition-opacity block"
+                              style={{ backgroundColor: bg, borderLeft: `3px solid ${border}`, fontSize: "12px", lineHeight: "18px" }}
                             >
                               {event.allDay ? (
                                 <span className="font-medium text-gray-700 truncate block">{event.title}</span>

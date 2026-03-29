@@ -114,7 +114,7 @@ export default function PersonalMonthView({ currentDate, events, holidays }: Per
               <th
                 key={day}
                 className={`border border-gray-300 px-1 py-2 text-center text-xs font-bold ${
-                  i === 0 ? "text-red-600 bg-red-200" : i === 6 ? "text-blue-600 bg-blue-200" : "text-gray-600 bg-gray-100"
+                  i === 0 ? "text-red-600 bg-red-200 text-sm" : i === 6 ? "text-blue-600 bg-blue-200 text-sm" : "text-gray-600 bg-gray-100 text-sm"
                 }`}
               >
                 {day}
@@ -141,13 +141,13 @@ export default function PersonalMonthView({ currentDate, events, holidays }: Per
                 return (
                   <td
                     key={cell.date}
-                    className={`border border-gray-300 align-top min-h-[90px] h-[90px] w-[14.28%] relative group ${cellBg} ${
+                    className={`border border-gray-300 align-top min-h-[100px] h-[100px] w-[14.28%] relative group ${cellBg} ${
                       !cell.isCurrentMonth ? "opacity-40" : ""
                     }`}
                   >
                     {/* 日付ヘッダー */}
                     <div className="flex items-center justify-between px-1 pt-0.5">
-                      <span className={`text-xs font-bold ${
+                      <span className={`text-sm font-bold ${
                         isToday ? "bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center" :
                         isSunday || isHoliday ? "text-red-600" :
                         isSaturday ? "text-blue-600" : "text-gray-700"
@@ -155,7 +155,7 @@ export default function PersonalMonthView({ currentDate, events, holidays }: Per
                         {cell.day}
                       </span>
                       {holiday && cell.isCurrentMonth && (
-                        <span className="text-[9px] text-red-400 truncate ml-0.5">{holiday.name}</span>
+                        <span className="text-[10px] text-red-500 font-medium truncate ml-0.5">{holiday.name}</span>
                       )}
                     </div>
 
@@ -170,8 +170,8 @@ export default function PersonalMonthView({ currentDate, events, holidays }: Per
                           <button
                             key={`${event.id}-${idx}`}
                             onClick={() => router.push(`/calendar/event/${event.id}`)}
-                            className="w-full text-left rounded px-1 py-0 hover:opacity-80 transition-opacity block truncate"
-                            style={{ backgroundColor: bg, borderLeft: `3px solid ${border}`, fontSize: "10px", lineHeight: "16px" }}
+                            className="w-full text-left rounded px-1.5 py-0.5 hover:opacity-80 transition-opacity block truncate"
+                            style={{ backgroundColor: bg, borderLeft: `3px solid ${border}`, fontSize: "11px", lineHeight: "17px" }}
                           >
                             {event.allDay ? (
                               <span className="font-medium text-gray-700">{event.title}</span>
