@@ -25,9 +25,8 @@ export default function HolidayWizard() {
   // Step 2: key=YYYY-MM-DD, value={ name, type }
   const [holidayMap, setHolidayMap] = useState<Map<string, { name: string; type: string }>>(new Map());
 
-  // 名前入力ポップアップ
-  const [pendingDate, setPendingDate] = useState<string | null>(null);
-  const [pendingName, setPendingName] = useState("");
+  // 変更追跡
+  const [hasChanges, setHasChanges] = useState(false);
 
   const fetchExisting = useCallback(async () => {
     const res = await fetch(`/api/calendar/holidays?start=${year}-01-01&end=${year}-12-31`);
@@ -84,32 +83,22 @@ export default function HolidayWizard() {
     setHolidayMap(map);
     setStep("calendar");
     setSaved(false);
+    setHasChanges(true);
   };
 
-  // 日付クリック
+  // 日付クリック → 即トグル
   const handleDayClick = (dateStr: string) => {
-    if (holidayMap.has(dateStr)) {
-      setHolidayMap((prev) => {
-        const next = new Map(prev);
-        next.delete(dateStr);
-        return next;
-      });
-    } else {
-      setPendingDate(dateStr);
-      setPendingName("");
-    }
-  };
-
-  const confirmPending = () => {
-    if (!pendingDate) return;
-    const name = pendingName.trim() || "会社休日";
     setHolidayMap((prev) => {
       const next = new Map(prev);
-      next.set(pendingDate, { name, type: "COMPANY" });
+      if (next.has(dateStr)) {
+        next.delete(dateStr);
+      } else {
+        next.set(dateStr, { name: "会社休日", type: "COMPANY" });
+      }
       return next;
     });
-    setPendingDate(null);
-    setPendingName("");
+    setHasChanges(true);
+    setSaved(false);
   };
 
   // 保存
@@ -129,6 +118,7 @@ export default function HolidayWizard() {
       if (res.ok) {
         await fetchExisting();
         setSaved(true);
+        setHasChanges(false);
       }
     } catch (e) {
       console.error(e);
@@ -140,12 +130,6 @@ export default function HolidayWizard() {
   // --- helpers ---
   const fmtDate = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-
-  const fmtLabel = (dateStr: string) => {
-    const d = new Date(dateStr + "T00:00:00");
-    const days = ["日", "月", "火", "水", "木", "金", "土"];
-    return `${d.getMonth() + 1}/${d.getDate()}(${days[d.getDay()]})`;
-  };
 
   const holidayCount = holidayMap.size;
   const weekendCount = Array.from(holidayMap.values()).filter((v) => v.type === "WEEKEND").length;
@@ -228,37 +212,10 @@ export default function HolidayWizard() {
         </div>
       </div>
 
-      {/* 名前入力ポップアップ */}
-      {pendingDate && (
-        <div className="bg-amber-50 border border-amber-300 rounded-xl p-4">
-          <div className="text-sm font-medium text-gray-800 mb-2">
-            {fmtLabel(pendingDate)} を休日に追加
-          </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={pendingName}
-              onChange={(e) => setPendingName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && confirmPending()}
-              placeholder="休日名（例: 夏季休暇）"
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm flex-1"
-              autoFocus
-            />
-            <button
-              onClick={confirmPending}
-              className="bg-indigo-600 text-white text-sm px-4 rounded-lg hover:bg-indigo-700"
-            >
-              追加
-            </button>
-            <button
-              onClick={() => setPendingDate(null)}
-              className="border border-gray-300 text-sm px-3 rounded-lg hover:bg-gray-50"
-            >
-              取消
-            </button>
-          </div>
-        </div>
-      )}
+      {/* 操作ガイド */}
+      <div className="text-xs text-gray-400 text-center">
+        日付をクリックで休日ON/OFF切替
+      </div>
 
       {/* 12ヶ月カレンダー 4列3段 */}
       <div className="grid grid-cols-4 gap-2">
@@ -342,18 +299,20 @@ export default function HolidayWizard() {
 
       {/* 保存 */}
       <div className="space-y-2">
-        {saved && (
+        {saved && !hasChanges && (
           <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-center text-sm text-green-700 font-medium">
             {year}年の休日設定を保存しました（{holidayCount}日）
           </div>
         )}
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50 transition-colors"
-        >
-          {saving ? "保存中..." : `この内容で保存する（${holidayCount}日）`}
-        </button>
+        {hasChanges && (
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 font-medium disabled:opacity-50 transition-colors"
+          >
+            {saving ? "保存中..." : `この内容で確定する（休日 ${holidayCount}日）`}
+          </button>
+        )}
       </div>
     </div>
   );
