@@ -224,7 +224,10 @@ export default function CalendarPage() {
       {/* メインコンテンツ */}
       <div className="overflow-x-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-20 text-gray-400">読み込み中...</div>
+          <div className="flex items-center justify-center py-16 gap-3">
+            <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm text-gray-500">読み込み中...</span>
+          </div>
         ) : viewMode === "groupWeek" ? (
           <GroupWeekView
             startDate={weekStartDate}

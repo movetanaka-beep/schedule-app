@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-// GET: グループメンバー全員のイベントを取得
+// GET: グループメンバー全員のイベントを取得（最適化版）
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -25,115 +25,18 @@ export async function GET(req: NextRequest) {
     const startDate = new Date(start + "T00:00:00Z");
     const endDate = new Date(end + "T23:59:59Z");
 
-    // メンバー一覧を取得
-    let members;
-    if (teamId) {
-      const teamMembers = await prisma.teamMember.findMany({
-        where: { teamId },
-        include: { user: { select: { id: true, name: true, role: true } } },
-        orderBy: { user: { name: "asc" } },
-      });
-      members = teamMembers.map((tm: { user: { id: string; name: string; role: string } }) => tm.user);
-    } else {
-      // チーム指定なしは全ユーザー
-      members = await prisma.user.findMany({
-        select: { id: true, name: true, role: true },
-        orderBy: { name: "asc" },
-      });
-    }
-
-    // 全メンバーのイベントを取得
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const events = await prisma.scheduleEvent.findMany({
-      where: {
-        startTime: { lte: endDate },
-        endTime: { gte: startDate },
-        OR: [
-          { createdBy: { in: members.map((m: { id: string }) => m.id) } },
-          { participants: { some: { userId: { in: members.map((m: { id: string }) => m.id) } } } },
-        ],
-      },
-      include: {
-        creator: { select: { id: true, name: true } },
-        participants: {
-          include: { user: { select: { id: true, name: true } } },
-        },
-      },
-      orderBy: { startTime: "asc" },
-    });
-
-    // メンバーごとにイベントをグルーピング
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const memberEvents: Record<string, any[]> = {};
-    members.forEach((m: { id: string }) => {
-      memberEvents[m.id] = [];
-    });
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    events.forEach((event: any) => {
-      // 作成者
-      if (memberEvents[event.createdBy]) {
-        // プライベートイベントは他人にはマスク
-        if (event.isPrivate && event.createdBy !== session.user.id) {
-          memberEvents[event.createdBy].push({
-            id: event.id,
-            title: "予定あり",
-            startTime: event.startTime.toISOString(),
-            endTime: event.endTime.toISOString(),
-            allDay: event.allDay,
-            isPrivate: true,
-            category: "DEFAULT",
-            color: "#9ca3af",
-          });
-        } else {
-          memberEvents[event.createdBy].push({
-            id: event.id,
-            title: event.title,
-            startTime: event.startTime.toISOString(),
-            endTime: event.endTime.toISOString(),
-            allDay: event.allDay,
-            isPrivate: event.isPrivate,
-            category: event.category,
-            color: event.color,
-            location: event.location,
-          });
-        }
-      }
-
-      // 参加者
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      event.participants.forEach((p: any) => {
-        if (memberEvents[p.userId] && p.userId !== event.createdBy) {
-          if (event.isPrivate && event.createdBy !== session.user.id) {
-            memberEvents[p.userId].push({
-              id: event.id,
-              title: "予定あり",
-              startTime: event.startTime.toISOString(),
-              endTime: event.endTime.toISOString(),
-              allDay: event.allDay,
-              isPrivate: true,
-              category: "DEFAULT",
-              color: "#9ca3af",
-            });
-          } else {
-            memberEvents[p.userId].push({
-              id: event.id,
-              title: event.title,
-              startTime: event.startTime.toISOString(),
-              endTime: event.endTime.toISOString(),
-              allDay: event.allDay,
-              isPrivate: event.isPrivate,
-              category: event.category,
-              color: event.color,
-              location: event.location,
-            });
-          }
-        }
-      });
-    });
-
-    // 休日とチーム一覧も同時取得（API呼び出し回数を減らす）
-    const [holidays, teams] = await Promise.all([
+    // メンバー取得と休日・チームを全て並列実行
+    const [membersRaw, holidays, teams] = await Promise.all([
+      teamId
+        ? prisma.teamMember.findMany({
+            where: { teamId },
+            include: { user: { select: { id: true, name: true, role: true } } },
+            orderBy: { user: { name: "asc" } },
+          })
+        : prisma.user.findMany({
+            select: { id: true, name: true, role: true },
+            orderBy: { name: "asc" },
+          }),
       prisma.companyHoliday.findMany({
         where: { date: { gte: start!, lte: end! } },
         orderBy: { date: "asc" },
@@ -143,6 +46,81 @@ export async function GET(req: NextRequest) {
         orderBy: { name: "asc" },
       }),
     ]);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const members = teamId ? (membersRaw as any[]).map((tm) => tm.user) : membersRaw;
+    const memberIds = members.map((m: { id: string }) => m.id);
+
+    // イベント取得
+    const events = await prisma.scheduleEvent.findMany({
+      where: {
+        startTime: { lte: endDate },
+        endTime: { gte: startDate },
+        OR: [
+          { createdBy: { in: memberIds } },
+          { participants: { some: { userId: { in: memberIds } } } },
+        ],
+      },
+      select: {
+        id: true,
+        title: true,
+        startTime: true,
+        endTime: true,
+        allDay: true,
+        isPrivate: true,
+        category: true,
+        color: true,
+        location: true,
+        createdBy: true,
+        participants: { select: { userId: true } },
+      },
+      orderBy: { startTime: "asc" },
+    });
+
+    // メンバーごとにイベントをグルーピング（軽量化）
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const memberEvents: Record<string, any[]> = {};
+    memberIds.forEach((id: string) => { memberEvents[id] = []; });
+
+    const myId = session.user.id;
+
+    for (const event of events) {
+      const masked = event.isPrivate && event.createdBy !== myId;
+      const item = masked
+        ? {
+            id: event.id,
+            title: "予定あり",
+            startTime: event.startTime.toISOString(),
+            endTime: event.endTime.toISOString(),
+            allDay: event.allDay,
+            isPrivate: true,
+            category: "DEFAULT",
+            color: "#9ca3af",
+          }
+        : {
+            id: event.id,
+            title: event.title,
+            startTime: event.startTime.toISOString(),
+            endTime: event.endTime.toISOString(),
+            allDay: event.allDay,
+            isPrivate: event.isPrivate,
+            category: event.category,
+            color: event.color,
+            location: event.location,
+          };
+
+      // 作成者
+      if (memberEvents[event.createdBy]) {
+        memberEvents[event.createdBy].push(item);
+      }
+
+      // 参加者
+      for (const p of event.participants) {
+        if (memberEvents[p.userId] && p.userId !== event.createdBy) {
+          memberEvents[p.userId].push(item);
+        }
+      }
+    }
 
     return NextResponse.json({ members, memberEvents, holidays, teams });
   } catch (error) {
