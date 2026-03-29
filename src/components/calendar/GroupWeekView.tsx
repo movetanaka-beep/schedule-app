@@ -128,11 +128,11 @@ export default function GroupWeekView({
                   key={day.date}
                   className={`border border-gray-300 px-1 py-2 text-center text-xs font-medium min-w-[120px] ${
                     day.isToday
-                      ? "bg-yellow-100 border-yellow-400"
+                      ? "bg-yellow-200 border-yellow-500"
                       : isSunday || isHoliday
-                      ? "bg-red-100"
+                      ? "bg-red-200"
                       : isSaturday
-                      ? "bg-blue-100"
+                      ? "bg-blue-200"
                       : "bg-gray-100"
                   }`}
                 >
@@ -179,9 +179,9 @@ export default function GroupWeekView({
                   const isSaturday = day.dayOfWeek === 6;
                   const isHoliday = !!holidayMap[day.date];
                   let cellBg = "";
-                  if (isSunday || isHoliday) cellBg = "bg-red-50";
-                  else if (isSaturday) cellBg = "bg-blue-50";
-                  if (day.isToday) cellBg = "bg-yellow-50";
+                  if (isSunday || isHoliday) cellBg = "bg-red-100";
+                  else if (isSaturday) cellBg = "bg-blue-100";
+                  if (day.isToday) cellBg = "bg-yellow-100";
 
                   return (
                     <td

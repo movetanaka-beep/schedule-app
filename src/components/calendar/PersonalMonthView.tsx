@@ -114,7 +114,7 @@ export default function PersonalMonthView({ currentDate, events, holidays }: Per
               <th
                 key={day}
                 className={`border border-gray-300 px-1 py-2 text-center text-xs font-bold ${
-                  i === 0 ? "text-red-600 bg-red-100" : i === 6 ? "text-blue-600 bg-blue-100" : "text-gray-600 bg-gray-100"
+                  i === 0 ? "text-red-600 bg-red-200" : i === 6 ? "text-blue-600 bg-blue-200" : "text-gray-600 bg-gray-100"
                 }`}
               >
                 {day}
@@ -134,9 +134,9 @@ export default function PersonalMonthView({ currentDate, events, holidays }: Per
                 const dayEvents = eventsByDate[cell.date] || [];
 
                 let cellBg = "";
-                if (isSunday || isHoliday) cellBg = "bg-red-50";
-                else if (isSaturday) cellBg = "bg-blue-50";
-                if (isToday) cellBg = "bg-yellow-100";
+                if (isSunday || isHoliday) cellBg = "bg-red-100";
+                else if (isSaturday) cellBg = "bg-blue-100";
+                if (isToday) cellBg = "bg-yellow-200";
 
                 return (
                   <td
