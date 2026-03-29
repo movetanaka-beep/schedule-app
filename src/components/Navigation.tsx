@@ -2,27 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
 
 const navItems = [
   { href: "/calendar", label: "カレンダー", icon: "📅" },
-];
-
-const adminItems = [
-  { href: "/admin", label: "管理", icon: "⚙️" },
+  { href: "/admin", label: "設定", icon: "⚙️" },
 ];
 
 export default function Navigation() {
   const pathname = usePathname();
-  const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "ADMIN";
-
-  const items = isAdmin ? [...navItems, ...adminItems] : navItems;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
       <div className="max-w-lg mx-auto flex justify-around py-2">
-        {items.map((item) => {
+        {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
 
           return (
