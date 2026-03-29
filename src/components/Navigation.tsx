@@ -6,7 +6,6 @@ import { useSession } from "next-auth/react";
 
 const navItems = [
   { href: "/calendar", label: "カレンダー", icon: "📅" },
-  { href: "/calendar?view=day", label: "今日", icon: "📋" },
 ];
 
 const adminItems = [
@@ -24,9 +23,7 @@ export default function Navigation() {
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
       <div className="max-w-lg mx-auto flex justify-around py-2">
         {items.map((item) => {
-          const isActive = item.href === "/calendar"
-            ? pathname === "/calendar" && !pathname.includes("view=day")
-            : pathname.startsWith(item.href.split("?")[0]);
+          const isActive = pathname.startsWith(item.href);
 
           return (
             <Link

@@ -10,7 +10,7 @@ import PersonalMonthView from "@/components/calendar/PersonalMonthView";
 import DayDetail from "@/components/calendar/DayDetail";
 import { CalendarEvent, Holiday } from "@/types/calendar";
 
-type ViewMode = "groupWeek" | "groupDay" | "personalWeek" | "personalMonth";
+type ViewMode = "groupWeek" | "personalMonth";
 
 interface Member {
   id: string;
@@ -102,7 +102,7 @@ export default function CalendarPage() {
   useEffect(() => {
     if (!session) return;
     setLoading(true);
-    if (viewMode === "groupWeek" || viewMode === "groupDay") {
+    if (viewMode === "groupWeek") {
       fetchGroupWeek();
     } else {
       fetchPersonalMonth();
@@ -112,24 +112,20 @@ export default function CalendarPage() {
   // ナビゲーション
   const goToPrev = () => {
     const d = new Date(currentDate);
-    if (viewMode === "groupWeek" || viewMode === "personalWeek") {
+    if (viewMode === "groupWeek") {
       d.setDate(d.getDate() - 7);
-    } else if (viewMode === "personalMonth") {
-      d.setMonth(d.getMonth() - 1);
     } else {
-      d.setDate(d.getDate() - 1);
+      d.setMonth(d.getMonth() - 1);
     }
     setCurrentDate(d);
   };
 
   const goToNext = () => {
     const d = new Date(currentDate);
-    if (viewMode === "groupWeek" || viewMode === "personalWeek") {
+    if (viewMode === "groupWeek") {
       d.setDate(d.getDate() + 7);
-    } else if (viewMode === "personalMonth") {
-      d.setMonth(d.getMonth() + 1);
     } else {
-      d.setDate(d.getDate() + 1);
+      d.setMonth(d.getMonth() + 1);
     }
     setCurrentDate(d);
   };
@@ -167,11 +163,9 @@ export default function CalendarPage() {
 
       {/* ビュー切替タブ */}
       <div className="border-b border-gray-300 bg-gray-50">
-        <div className="flex overflow-x-auto">
+        <div className="flex">
           {[
-            { key: "groupWeek", label: "グループ週", icon: "📊" },
-            { key: "groupDay", label: "グループ日", icon: "📋" },
-            { key: "personalWeek", label: "個人週", icon: "📅" },
+            { key: "groupWeek", label: "全体・グループ週", icon: "📊" },
             { key: "personalMonth", label: "個人月", icon: "🗓" },
           ].map((tab) => (
             <button
@@ -193,7 +187,7 @@ export default function CalendarPage() {
       <div className="border-b border-gray-200 bg-white px-3 py-2">
         <div className="flex items-center justify-between gap-2">
           {/* グループ選択 */}
-          {(viewMode === "groupWeek" || viewMode === "groupDay") && (
+          {viewMode === "groupWeek" && (
             <div className="flex items-center gap-1">
               <span className="text-xs text-gray-500">グループ</span>
               <select
@@ -212,13 +206,13 @@ export default function CalendarPage() {
           {/* 日付表示 */}
           <div className="flex items-center gap-1 flex-1 justify-center">
             <button onClick={goToPrev} className="px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 rounded">
-              ◀ {viewMode.includes("Week") ? "前週" : viewMode === "personalMonth" ? "前月" : "前日"}
+              ◀ {viewMode === "groupWeek" ? "前週" : "前月"}
             </button>
             <button onClick={goToToday} className="px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded font-medium">
               今日
             </button>
             <button onClick={goToNext} className="px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 rounded">
-              {viewMode.includes("Week") ? "翌週" : viewMode === "personalMonth" ? "翌月" : "翌日"} ▶
+              {viewMode === "groupWeek" ? "翌週" : "翌月"} ▶
             </button>
           </div>
 
@@ -239,16 +233,12 @@ export default function CalendarPage() {
             holidays={holidays}
             onAddEvent={(date) => router.push(`/calendar/event/new?date=${date}`)}
           />
-        ) : viewMode === "personalMonth" ? (
+        ) : (
           <PersonalMonthView
             currentDate={currentDate}
             events={events}
             holidays={holidays}
           />
-        ) : (
-          <div className="flex items-center justify-center py-20 text-gray-400 text-sm">
-            {viewMode === "groupDay" ? "グループ日ビュー" : "個人週ビュー"}は準備中です
-          </div>
         )}
       </div>
 
