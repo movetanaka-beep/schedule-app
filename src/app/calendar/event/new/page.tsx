@@ -4,9 +4,13 @@ import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
 import Header from "@/components/Header";
-import { CATEGORY_COLORS, CATEGORY_LABELS, EventCategory } from "@/types/calendar";
-
-const categories: EventCategory[] = ["DEFAULT", "MEETING", "TASK", "REMINDER", "OUT_OF_OFFICE"];
+interface CategoryItem {
+  id: string;
+  key: string;
+  label: string;
+  color: string;
+  bgColor: string;
+}
 
 interface UserItem {
   id: string;
@@ -27,6 +31,7 @@ function NewEventForm() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
 
   // フォーム状態
   const today = new Date();
@@ -40,7 +45,7 @@ function NewEventForm() {
   const [endTime, setEndTime] = useState("10:00");
   const [allDay, setAllDay] = useState(false);
   const [multiDay, setMultiDay] = useState(false);
-  const [category, setCategory] = useState<EventCategory>("DEFAULT");
+  const [category, setCategory] = useState("DEFAULT");
   const [location, setLocation] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
   const [shareScope, setShareScope] = useState("ALL");
@@ -54,6 +59,14 @@ function NewEventForm() {
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
   }, [status, router]);
+
+  // カテゴリ一覧を取得
+  useEffect(() => {
+    if (!session) return;
+    fetch("/api/calendar/categories").then((r) => r.json()).then((d) => {
+      if (Array.isArray(d)) setCategories(d);
+    }).catch(() => {});
+  }, [session]);
 
   // ユーザーとチーム一覧を取得
   useEffect(() => {
@@ -207,15 +220,15 @@ function NewEventForm() {
           <div className="flex gap-2 overflow-x-auto pb-1">
             {categories.map((cat) => (
               <button
-                key={cat}
+                key={cat.key}
                 type="button"
-                onClick={() => setCategory(cat)}
+                onClick={() => setCategory(cat.key)}
                 className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                  category === cat ? "text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  category === cat.key ? "text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
-                style={category === cat ? { backgroundColor: CATEGORY_COLORS[cat] } : {}}
+                style={category === cat.key ? { backgroundColor: cat.color } : {}}
               >
-                {CATEGORY_LABELS[cat]}
+                {cat.label}
               </button>
             ))}
           </div>

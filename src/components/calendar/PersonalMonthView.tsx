@@ -174,12 +174,12 @@ export default function PersonalMonthView({ currentDate, events, holidays }: Per
                             style={{ backgroundColor: bg, borderLeft: `3px solid ${border}`, fontSize: "11px", lineHeight: "17px" }}
                           >
                             {event.allDay ? (
-                              <span className="font-medium text-gray-700">{event.title}</span>
+                              <span className="font-semibold text-gray-800">{event.title}</span>
                             ) : (
                               <>
-                                <span className="text-gray-400">{formatTimeRange(event.startTime, event.endTime)}</span>
+                                <span className="text-gray-500 font-medium">{formatTimeRange(event.startTime, event.endTime)}</span>
                                 {" "}
-                                <span className="text-gray-700">{event.title}</span>
+                                <span className="text-gray-800 font-medium">{event.title}</span>
                               </>
                             )}
                           </button>

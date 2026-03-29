@@ -163,7 +163,7 @@ export default function GroupWeekView({
                       {member.name.charAt(0)}
                     </div>
                     <div>
-                      <div className="text-sm font-medium text-gray-800 leading-tight">{member.name}</div>
+                      <div className="text-sm font-bold text-gray-800 leading-tight">{member.name}</div>
                       {member.role === "ADMIN" && (
                         <div className="text-xs text-gray-400">管理者</div>
                       )}
@@ -204,12 +204,12 @@ export default function GroupWeekView({
                               style={{ backgroundColor: bg, borderLeft: `3px solid ${border}`, fontSize: "12px", lineHeight: "18px" }}
                             >
                               {event.allDay ? (
-                                <span className="font-medium text-gray-700 truncate block">{event.title}</span>
+                                <span className="font-semibold text-gray-800 truncate block">{event.title}</span>
                               ) : (
-                                <span className="truncate block">
-                                  <span className="text-gray-400">{formatTimeRange(event.startTime, event.endTime)}</span>
+                                <span className="truncate block font-medium">
+                                  <span className="text-gray-500">{formatTimeRange(event.startTime, event.endTime)}</span>
                                   {" "}
-                                  <span className="text-gray-700">{event.title}</span>
+                                  <span className="text-gray-800">{event.title}</span>
                                 </span>
                               )}
                             </button>

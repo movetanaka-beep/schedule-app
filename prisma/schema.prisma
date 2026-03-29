@@ -228,6 +228,19 @@ model EventParticipant {
   @@unique([eventId, userId])
 }
 
+// カスタムカテゴリ（ユーザーが追加可能なタグ）
+model EventCategory {
+  id        String   @id @default(cuid())
+  key       String   @unique // 内部キー（英数字）
+  label     String           // 表示名（日本語）
+  color     String           // カラーコード（hex）
+  bgColor   String           // 背景色（hex）
+  isDefault Boolean  @default(false) // デフォルトカテゴリかどうか
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 // イベントリマインダー
 model EventReminder {
   id            String        @id @default(cuid())
