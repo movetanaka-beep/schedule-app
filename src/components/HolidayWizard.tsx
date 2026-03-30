@@ -29,9 +29,15 @@ export default function HolidayWizard() {
   const [hasChanges, setHasChanges] = useState(false);
 
   const fetchExisting = useCallback(async () => {
-    const res = await fetch(`/api/calendar/holidays?start=${year}-01-01&end=${year}-12-31`);
-    const data = await res.json();
-    if (Array.isArray(data)) setExistingHolidays(data);
+    try {
+      const res = await fetch(`/api/calendar/holidays?start=${year}-01-01&end=${year}-12-31`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) setExistingHolidays(data);
+      }
+    } catch {
+      // ignore
+    }
   }, [year]);
 
   useEffect(() => {
@@ -110,10 +116,15 @@ export default function HolidayWizard() {
         name,
         type,
       }));
-      const res = await fetch("/api/calendar/holidays/bulk", {
+      // Delete existing first
+      for (const h of existingHolidays) {
+        await fetch(`/api/calendar/holidays/${h.id}`, { method: "DELETE" });
+      }
+      // Bulk create via holidays array
+      const res = await fetch("/api/calendar/holidays", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ year, holidays }),
+        body: JSON.stringify({ holidays }),
       });
       if (res.ok) {
         await fetchExisting();

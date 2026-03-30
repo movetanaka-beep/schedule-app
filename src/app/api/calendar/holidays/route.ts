@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST: 休日追加（管理者のみ）
+// POST: 休日追加（管理者のみ） - 単体 or 一括
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -46,13 +46,32 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
+
+    // 一括登録モード
+    if (body.holidays && Array.isArray(body.holidays)) {
+      const results = [];
+      for (const h of body.holidays as Array<{ date: string; name: string; type: string }>) {
+        try {
+          const created = await prisma.companyHoliday.upsert({
+            where: { date: h.date },
+            update: { name: h.name, type: h.type },
+            create: { date: h.date, name: h.name, type: h.type, createdBy: session.user.id },
+          });
+          results.push(created);
+        } catch {
+          // skip duplicates
+        }
+      }
+      return NextResponse.json({ count: results.length, holidays: results });
+    }
+
+    // 単体登録モード
     const { date, name, type } = body;
 
     if (!date || !name) {
       return NextResponse.json({ error: "日付と名称は必須です" }, { status: 400 });
     }
 
-    // 重複チェック
     const existing = await prisma.companyHoliday.findUnique({ where: { date } });
     if (existing) {
       return NextResponse.json({ error: "この日付の休日は既に登録されています" }, { status: 400 });
