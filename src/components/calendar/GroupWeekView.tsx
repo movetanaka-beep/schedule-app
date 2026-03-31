@@ -110,7 +110,7 @@ export default function GroupWeekView({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse min-w-[800px]">
+      <table className="w-full border-collapse min-w-[800px] table-fixed">
         {/* ヘッダー: 日付行 */}
         <thead>
           <tr>
