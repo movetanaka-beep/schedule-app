@@ -50,6 +50,11 @@ function NewEventForm() {
   const [isPrivate, setIsPrivate] = useState(false);
   const [shareScope, setShareScope] = useState("ALL");
 
+  // リマインダー
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [reminderPreset, setReminderPreset] = useState("15");
+  const [reminderCustom, setReminderCustom] = useState("");
+
   // 参加者選択
   const [allUsers, setAllUsers] = useState<UserItem[]>([]);
   const [teams, setTeams] = useState<TeamItem[]>([]);
@@ -172,6 +177,9 @@ function NewEventForm() {
           isPrivate,
           shareScope,
           participantIds: Array.from(selectedUserIds),
+          reminderMinutes: reminderEnabled
+            ? parseInt(reminderPreset === "custom" ? reminderCustom : reminderPreset) || null
+            : null,
         }),
       });
 
@@ -394,6 +402,60 @@ function NewEventForm() {
             rows={3}
             className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
           />
+
+          {/* リマインダー */}
+          <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+            <div className="px-4 py-3 flex items-center gap-3">
+              <label className="text-sm text-gray-700 flex-1 font-medium">リマインダー通知</label>
+              <input
+                type="checkbox"
+                checked={reminderEnabled}
+                onChange={(e) => setReminderEnabled(e.target.checked)}
+                className="w-5 h-5 rounded text-indigo-600"
+              />
+            </div>
+            {reminderEnabled && (
+              <div className="px-4 py-3 space-y-2">
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { value: "5", label: "5分前" },
+                    { value: "15", label: "15分前" },
+                    { value: "30", label: "30分前" },
+                    { value: "60", label: "1時間前" },
+                    { value: "custom", label: "カスタム" },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setReminderPreset(opt.value)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                        reminderPreset === opt.value
+                          ? "bg-indigo-600 text-white border-indigo-600"
+                          : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {reminderPreset === "custom" && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={reminderCustom}
+                      onChange={(e) => setReminderCustom(e.target.value)}
+                      placeholder="分数"
+                      min="1"
+                      max="1440"
+                      className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    />
+                    <span className="text-sm text-gray-500">分前に通知</span>
+                  </div>
+                )}
+                <p className="text-xs text-gray-400">メールとブラウザ通知でお知らせします</p>
+              </div>
+            )}
+          </div>
 
           {/* 公開設定 */}
           <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
